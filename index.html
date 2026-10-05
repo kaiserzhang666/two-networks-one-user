@@ -1,0 +1,906 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Two Networks, One User: an interactive essay by Kaiser Zhang for Being Digital (HCI #1), NYU.">
+<meta name="author" content="Kaiser Zhang">
+<meta property="og:title" content="Two Networks, One User">
+<meta property="og:description" content="An interactive essay on growing up between two internets.">
+<title>Two Networks, One User</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@250..850&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+SC:wght@400;600&display=swap">
+<style>
+/* Layout: telemetry dossier. A fixed HUD rail on the left (desktop) tracks position in the essay and the
+   time in both cities; one 66ch reading column; interactive figures break out wider inside bracketed HUD frames.
+   Two signal colours carry meaning everywhere: amber = the Beijing network, cyan = the New York network. */
+:root{
+  color-scheme: dark;
+  --bg:#060A12;          /* night-sky ink */
+  --panel:#0A111E;       /* frame fill */
+  --panel-2:#0E1828;     /* raised control */
+  --line:#1B2740;        /* hairlines, grid */
+  --ink:#E3EAF5;         /* text */
+  --muted:#8E9BB4;       /* secondary text */
+  --dim:#56647D;         /* tertiary, labels */
+  --bj:#FFB24A;          /* Beijing network */
+  --ny:#48D3FF;          /* New York network */
+  --hot:#FF5D6E;         /* blocked / loss */
+  --ok:#62E3A6;          /* reachable / gain */
+  --f-display:'Unbounded','Arial Black',system-ui,sans-serif;
+  --f-body:'Instrument Sans','Helvetica Neue',Arial,sans-serif;
+  --f-mono:'JetBrains Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
+  --f-cjk:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
+  --rail:236px;
+  --col:66ch;
+  --mx:50%; --my:30%;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:18px;line-height:1.7;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden}
+.cjk{font-family:var(--f-cjk);font-style:normal}
+a{color:var(--ny);text-underline-offset:3px}
+:focus-visible{outline:2px solid var(--ny);outline-offset:3px}
+::selection{background:var(--ny);color:var(--bg)}
+
+/* ---------- background: grid that brightens under the pointer ---------- */
+.bg-grid,.bg-grid-hi{position:fixed;inset:0;pointer-events:none;z-index:0}
+.bg-grid{background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:56px 56px;opacity:.35}
+.bg-grid-hi{background-image:linear-gradient(var(--ny) 1px,transparent 1px),linear-gradient(90deg,var(--ny) 1px,transparent 1px);
+  background-size:56px 56px;opacity:.16;
+  -webkit-mask-image:radial-gradient(260px circle at var(--mx) var(--my),#000 0,transparent 70%);
+          mask-image:radial-gradient(260px circle at var(--mx) var(--my),#000 0,transparent 70%)}
+
+/* ---------- HUD rail ---------- */
+.rail{position:fixed;top:0;left:0;bottom:0;width:var(--rail);z-index:20;border-right:1px solid var(--line);
+  background:var(--bg);padding:calc(28px + env(safe-area-inset-top,0px)) 22px 24px;display:flex;flex-direction:column;gap:26px}
+.rail .mark{font-family:var(--f-display);font-weight:700;font-size:13px;letter-spacing:.06em;line-height:1.35;text-transform:uppercase}
+.rail .mark span{display:block;color:var(--muted);font-family:var(--f-mono);font-weight:400;font-size:11px;letter-spacing:.08em;margin-top:6px}
+.rail nav ol{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.rail nav a{display:grid;grid-template-columns:28px 1fr;gap:6px;align-items:baseline;padding:7px 8px;border-left:2px solid transparent;
+  color:var(--muted);text-decoration:none;font-size:13.5px;line-height:1.35;transition:color .2s,border-color .2s,background .2s}
+.rail nav a .n{font-family:var(--f-mono);font-size:11px;color:var(--dim)}
+.rail nav a:hover{color:var(--ink);background:var(--panel)}
+.rail nav a.on{color:var(--ink);border-left-color:var(--ny);background:var(--panel)}
+.rail nav a.on .n{color:var(--ny)}
+.rail .tele{margin-top:auto;display:grid;gap:12px;font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;color:var(--dim)}
+.tele .row{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.tele b{font-weight:600;font-size:15px;letter-spacing:.02em;font-variant-numeric:tabular-nums}
+.tele .bj b{color:var(--bj)} .tele .ny b{color:var(--ny)}
+.tele .bar{height:2px;background:var(--line);position:relative}
+.tele .bar i{position:absolute;inset:0 auto 0 0;width:0;background:var(--ink)}
+
+/* mobile top bar */
+.topbar{display:none}
+@media (max-width:1099px){
+  .rail{display:none}
+  .topbar{display:flex;position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);border-bottom:1px solid var(--line);
+    padding:10px 16px;justify-content:space-between;align-items:center;gap:12px;font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;color:var(--muted)}
+  .topbar .sec{color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .topbar .bar{position:absolute;left:0;right:0;bottom:-1px;height:2px}
+  .topbar .bar i{display:block;height:100%;width:0;background:var(--ny)}
+}
+
+/* ---------- page frame ---------- */
+.page{position:relative;z-index:1;margin-left:var(--rail);padding-inline:clamp(16px,5vw,72px);padding-block:0 80px}
+@media (max-width:1099px){.page{margin-left:0}}
+.wrap{max-width:1080px;margin:0 auto}
+.col{max-width:var(--col)}
+
+/* ---------- hero ---------- */
+.hero{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:clamp(20px,4vw,56px);align-items:center;
+  padding-block:clamp(40px,7vw,96px) clamp(28px,4vw,48px);border-bottom:1px solid var(--line)}
+@media (max-width:860px){.hero{grid-template-columns:1fr}}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap}
+.eyebrow i{color:var(--dim);font-style:normal}
+h1.title{font-family:var(--f-display);font-weight:600;font-size:clamp(40px,7.2vw,92px);line-height:.98;letter-spacing:-.02em;
+  margin:22px 0 22px;text-wrap:balance;cursor:default}
+h1.title .w{display:inline-block;white-space:nowrap}
+h1.title .ch{display:inline-block;transition:font-variation-settings .25s ease-out, color .25s}
+h1.title .a{color:var(--bj)} h1.title .b{color:var(--ny)}
+.dek{font-size:clamp(18px,2vw,21px);color:var(--muted);max-width:44ch;margin:0 0 26px;text-wrap:pretty}
+.meta{display:flex;flex-wrap:wrap;gap:8px 22px;font-family:var(--f-mono);font-size:12.5px;color:var(--muted)}
+.meta b{color:var(--ink);font-weight:600}
+.globe-box{position:relative;aspect-ratio:1/1;max-width:100%;width:100%;min-height:260px}
+.globe-box canvas{width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+.globe-box canvas:active{cursor:grabbing}
+.globe-box .tag{position:absolute;font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;display:flex;flex-direction:column;gap:2px;pointer-events:none}
+.globe-box .tag b{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+.globe-box .t1{left:0;top:6%;color:var(--bj)} .globe-box .t2{right:0;bottom:6%;color:var(--ny);text-align:right}
+.globe-box .hint{position:absolute;left:50%;bottom:0;transform:translateX(-50%);font-family:var(--f-mono);font-size:10.5px;color:var(--dim);letter-spacing:.1em;white-space:nowrap}
+.globe-fallback{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--f-mono);font-size:12px;color:var(--dim)}
+
+.stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border-bottom:1px solid var(--line)}
+.stats div{padding:18px 16px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:2px;min-width:0}
+.stats div:last-child{border-right:0}
+.stats b{font-family:var(--f-display);font-weight:500;font-size:clamp(20px,2.4vw,30px);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.stats span{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+@media (max-width:700px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stats div{border-bottom:1px solid var(--line)}.stats div:nth-child(2n){border-right:0}.stats div:last-child{grid-column:1/-1}}
+
+/* ---------- sections ---------- */
+.sec{padding-block:clamp(48px,7vw,88px) 0;scroll-margin-top:60px}
+.sec-head{display:flex;align-items:baseline;gap:18px;margin-bottom:28px}
+.sec-head .num{font-family:var(--f-mono);font-size:13px;color:var(--ny);letter-spacing:.1em;flex:none}
+h2{font-family:var(--f-display);font-weight:500;font-size:clamp(26px,3.6vw,42px);line-height:1.08;letter-spacing:-.015em;margin:0;text-wrap:balance}
+h3{font-family:var(--f-display);font-weight:500;font-size:clamp(19px,2.2vw,25px);line-height:1.2;margin:56px 0 18px;text-wrap:balance;display:flex;gap:14px;align-items:baseline;flex-wrap:wrap}
+h3 .k{font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;color:var(--bj);text-transform:uppercase;font-weight:400}
+.prose p{margin:0 0 1.15em;text-wrap:pretty}
+.prose p em{font-style:italic}
+.prose p:target{background:linear-gradient(90deg,rgba(72,211,255,.12),transparent);box-shadow:-14px 0 0 rgba(72,211,255,.12)}
+.figref{font-family:var(--f-mono);font-size:.78em;color:var(--ny);text-decoration:none;border-bottom:1px dotted var(--ny);white-space:nowrap}
+
+/* ---------- HUD frame for figures ---------- */
+.fig{position:relative;margin:40px 0 48px;background:var(--panel);border:1px solid var(--line);padding:0}
+.fig::before,.fig::after{content:"";position:absolute;width:18px;height:18px;pointer-events:none}
+.fig::before{top:-1px;left:-1px;border-top:2px solid var(--ny);border-left:2px solid var(--ny)}
+.fig::after{bottom:-1px;right:-1px;border-bottom:2px solid var(--bj);border-right:2px solid var(--bj)}
+.fig-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;padding:14px 18px;border-bottom:1px solid var(--line)}
+.fig-h .no{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.12em;color:var(--ny);text-transform:uppercase}
+.fig-h .t{font-weight:600;font-size:15.5px;flex:1 1 260px;min-width:0}
+.fig-h .live{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;color:var(--dim);text-transform:uppercase;display:flex;align-items:center;gap:6px}
+.fig-h .live::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.fig-b{padding:18px}
+.fig-n{padding:12px 18px 14px;border-top:1px solid var(--line);font-size:14px;color:var(--muted);line-height:1.55}
+.fig-n i{color:var(--ink)}
+
+/* controls */
+.ctrls{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;margin-bottom:16px}
+.seg{display:inline-flex;border:1px solid var(--line);background:var(--bg)}
+.seg button{all:unset;cursor:pointer;font-family:var(--f-mono);font-size:12px;letter-spacing:.06em;padding:8px 14px;color:var(--muted);transition:background .2s,color .2s}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button:hover{color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--panel-2);color:var(--ink);box-shadow:inset 0 -2px 0 var(--c,var(--ny))}
+.seg button:focus-visible{outline:2px solid var(--ny);outline-offset:-2px}
+.sw{display:inline-flex;align-items:center;gap:10px;cursor:pointer;font-family:var(--f-mono);font-size:12px;letter-spacing:.04em;color:var(--muted);user-select:none}
+.sw input{position:absolute;opacity:0;width:1px;height:1px}
+.sw .k{width:38px;height:20px;border:1px solid var(--line);background:var(--bg);position:relative;flex:none;transition:background .2s,border-color .2s}
+.sw .k::after{content:"";position:absolute;top:3px;left:3px;width:12px;height:12px;background:var(--dim);transition:transform .2s,background .2s}
+.sw input:checked+.k{border-color:var(--c,var(--ny))}
+.sw input:checked+.k::after{transform:translateX(18px);background:var(--c,var(--ny))}
+.sw input:focus-visible+.k{outline:2px solid var(--ny);outline-offset:2px}
+.sw input:disabled~*{opacity:.4;cursor:not-allowed}
+.sw .lab b{color:var(--ink);font-weight:600}
+.readout{font-family:var(--f-mono);font-size:12.5px;color:var(--ink);background:var(--bg);border:1px solid var(--line);padding:10px 12px;line-height:1.55}
+.readout .hl-bj{color:var(--bj)} .readout .hl-ny{color:var(--ny)} .readout .hl-hot{color:var(--hot)} .readout .hl-ok{color:var(--ok)}
+
+/* Fig 1 network table */
+.net{display:grid;grid-template-columns:minmax(110px,.7fr) minmax(0,1fr) minmax(0,1fr);border:1px solid var(--line);background:var(--bg)}
+.net>div{padding:11px 12px;border-bottom:1px solid var(--line);min-width:0}
+.net>div:nth-last-child(-n+3){border-bottom:0}
+.net .hd{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);display:flex;align-items:center;gap:8px}
+.net .hd.bj{color:var(--bj)} .net .hd.ny{color:var(--ny)}
+.net .hd .here{font-size:9.5px;padding:2px 6px;border:1px solid currentColor;letter-spacing:.1em}
+.net .fn{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.net .cell{border-left:1px solid var(--line);display:flex;flex-direction:column;gap:3px;transition:opacity .3s}
+.net .cell .app{font-weight:600;font-size:15px;line-height:1.3}
+.net .cell .st{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;display:inline-flex;gap:6px;align-items:center}
+.net .cell .st::before{content:"";width:6px;height:6px;flex:none;background:currentColor}
+.net .cell[data-s="ok"] .st{color:var(--ok)}
+.net .cell[data-s="blocked"] .st{color:var(--hot)}
+.net .cell[data-s="blocked"] .app{text-decoration:line-through;text-decoration-color:var(--hot);color:var(--dim)}
+.net .cell[data-s="vpn"] .st{color:var(--bj)}
+.net .cell[data-s="vpn"] .app{animation:flicker 2.6s steps(1) infinite}
+.net .cell[data-s="locked"] .st{color:var(--hot)}
+.net .cell[data-s="locked"] .app{color:var(--dim)}
+.net .cell[data-s="none"] .st{color:var(--dim)}
+.net .cell[data-s="none"] .app{color:var(--dim)}
+@keyframes flicker{0%,100%{opacity:1}12%{opacity:.35}14%{opacity:1}57%{opacity:.5}59%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.net .cell[data-s="vpn"] .app{animation:none}}
+.wall{grid-column:1/-1;height:0;border-top:1px dashed var(--hot);padding:0!important;border-bottom:0!important}
+@media (max-width:560px){.net{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.net .fn{grid-column:1/-1;border-bottom:0!important;padding-bottom:0;color:var(--dim)}.net .hd.fnh{display:none}.net .cell:nth-of-type(n){border-left:0}.net .cell.ny-c{border-left:1px solid var(--line)}}
+
+/* Fig 2 canvas */
+.chart{width:100%;height:280px;display:block;background:var(--bg);border:1px solid var(--line)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:10px;font-family:var(--f-mono);font-size:11.5px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:8px}
+.legend i{width:18px;height:2px;display:inline-block;background:currentColor}
+
+/* Fig 3 values */
+.vals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:640px){.vals{grid-template-columns:1fr}}
+.val{border:1px solid var(--line);background:var(--bg);padding:14px 16px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.val .k{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);display:flex;justify-content:space-between;gap:10px}
+.val .k em{font-style:normal;color:var(--muted)}
+.val .ln{font-family:var(--f-mono);font-size:13px;line-height:1.5;padding:6px 8px;display:grid;grid-template-columns:14px 1fr;gap:6px;transition:opacity .3s,max-height .3s}
+.val .minus{color:var(--bj);background:rgba(255,178,74,.07)}
+.val .plus{color:var(--ny);background:rgba(72,211,255,.07)}
+.val .why{font-size:14px;color:var(--muted);line-height:1.5}
+.vals[data-v="then"] .plus,.vals[data-v="now"] .minus{opacity:.12}
+
+/* Fig 4 timeline */
+.tl{position:relative;padding:8px 0 4px}
+.tl-track{position:relative;height:96px;border:1px solid var(--line);background:var(--bg);overflow:hidden}
+.tl-band{position:absolute;top:0;bottom:0;background:rgba(255,178,74,.09);border-inline:1px dashed rgba(255,178,74,.5)}
+.tl-band.ny{background:rgba(72,211,255,.08);border-inline:1px dashed rgba(72,211,255,.5)}
+.tl-band span{position:absolute;top:6px;left:8px;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.08em;color:var(--muted);white-space:nowrap}
+.tl-ev{position:absolute;top:34px;bottom:10px;width:2px;background:var(--ink);transform:translateX(-1px)}
+.tl-ev::after{content:"";position:absolute;top:-4px;left:-4px;width:10px;height:10px;background:var(--bg);border:2px solid var(--ink)}
+.tl-ev.bj{background:var(--bj)} .tl-ev.bj::after{border-color:var(--bj)}
+.tl-ev.ny{background:var(--ny)} .tl-ev.ny::after{border-color:var(--ny)}
+.tl-head{position:absolute;top:0;bottom:0;width:2px;background:var(--ok);box-shadow:0 0 12px var(--ok);pointer-events:none}
+.tl-axis{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:11px;color:var(--dim);margin-top:6px;font-variant-numeric:tabular-nums}
+.tl input[type=range]{width:100%;margin:12px 0 14px;accent-color:var(--ok)}
+.tl-out{display:grid;grid-template-columns:auto 1fr;gap:4px 16px}
+.tl-out .d{font-family:var(--f-display);font-size:22px;font-weight:500;font-variant-numeric:tabular-nums;grid-row:span 2;align-self:center}
+.tl-out .net-now{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase}
+.tl-out ul{margin:0;padding-left:18px;font-size:15px;color:var(--ink)}
+@media (max-width:560px){.tl-out{grid-template-columns:1fr}.tl-out .d{grid-row:auto}}
+
+/* Fig 5 & 7 ledgers */
+.ledgers{display:grid;gap:12px}
+.ledger{border:1px solid var(--line);background:var(--bg);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.ledger .lh{grid-column:1/-1;font-family:var(--f-mono);font-size:12px;padding:9px 12px;border-bottom:1px solid var(--line);color:var(--muted)}
+.ledger .lh b{color:var(--ink);font-weight:600}
+.ledger .c{padding:10px 12px;min-width:0}
+.ledger .c+.c{border-left:1px solid var(--line)}
+.ledger .lab{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px}
+.ledger .gain .lab{color:var(--ok)} .ledger .loss .lab{color:var(--hot)}
+.ledger ul{margin:0;padding-left:18px;font-size:14.5px;line-height:1.5}
+@media (max-width:560px){.ledger{grid-template-columns:1fr}.ledger .c+.c{border-left:0;border-top:1px solid var(--line)}}
+.verdict{margin-top:12px}
+.empty{font-family:var(--f-mono);font-size:12.5px;color:var(--dim);border:1px dashed var(--line);padding:14px;text-align:center}
+
+/* Fig 6 linear algebra */
+.la{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:760px){.la{grid-template-columns:1fr}}
+.la canvas{width:100%;aspect-ratio:4/3;max-width:100%;display:block;background:var(--bg);border:1px solid var(--line);cursor:grab;touch-action:none}
+.la canvas:active{cursor:grabbing}
+.mat{display:grid;grid-template-columns:auto 1fr 1fr auto;gap:10px 10px;align-items:center;font-family:var(--f-mono)}
+.mat .br{font-size:62px;line-height:1;color:var(--dim);font-weight:300;grid-row:span 2}
+.mat label{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--dim);letter-spacing:.06em}
+.mat label b{font-size:18px;color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+.mat label.i b{color:var(--bj)} .mat label.j b{color:var(--ny)}
+.mat input[type=range]{width:100%;accent-color:var(--ny)}
+.mat label.i input{accent-color:var(--bj)}
+.presets{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0}
+.presets button{all:unset;cursor:pointer;font-family:var(--f-mono);font-size:11.5px;padding:6px 10px;border:1px solid var(--line);color:var(--muted);background:var(--bg)}
+.presets button:hover{color:var(--ink);border-color:var(--muted)}
+.presets button:focus-visible{outline:2px solid var(--ny);outline-offset:2px}
+
+/* Conclusion pull */
+.pull{font-family:var(--f-display);font-weight:400;font-size:clamp(20px,2.6vw,30px);line-height:1.3;letter-spacing:-.01em;margin:8px 0 34px;max-width:28ch;text-wrap:balance}
+.pull .a{color:var(--bj)} .pull .b{color:var(--ny)}
+
+/* Concepts */
+.filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.concepts{display:grid;border:1px solid var(--line);background:var(--bg)}
+.concept{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr) minmax(0,1fr) auto;gap:14px;align-items:baseline;padding:12px 14px;border-bottom:1px solid var(--line)}
+.concept:last-child{border-bottom:0}
+.concept .nm{font-weight:600;font-size:15px}
+.concept .wh{font-size:14px;color:var(--muted)}
+.concept .src{font-family:var(--f-mono);font-size:11.5px;color:var(--dim)}
+.concept a{font-family:var(--f-mono);font-size:11.5px;white-space:nowrap}
+@media (max-width:760px){.concept{grid-template-columns:1fr auto}.concept .wh,.concept .src{grid-column:1/-1}}
+
+/* References */
+.refs p{padding-left:2em;text-indent:-2em;font-size:15.5px;color:var(--muted);margin:0 0 .9em;overflow-wrap:anywhere}
+.refs p em{color:var(--ink)}
+.refs a{color:var(--muted)}
+footer{margin-top:72px;padding-top:20px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;font-family:var(--f-mono);font-size:11.5px;color:var(--dim)}
+</style>
+</head>
+<body>
+
+
+<div class="bg-grid" aria-hidden="true"></div>
+<div class="bg-grid-hi" aria-hidden="true"></div>
+
+<aside class="rail" aria-label="Essay navigation">
+  <div class="mark">Two Networks,<br>One User<span>HCI #1 · BEING DIGITAL</span></div>
+  <nav><ol id="toc">
+    <li><a href="#opening" data-s="opening"><span class="n">00</span>Opening</a></li>
+    <li><a href="#identity" data-s="identity"><span class="n">01</span>Identity and Technology</a></li>
+    <li><a href="#education" data-s="education"><span class="n">02</span>Education, Profession, and Technology</a></li>
+    <li><a href="#values" data-s="values"><span class="n">03</span>Values and Technology</a></li>
+    <li><a href="#turning" data-s="turning"><span class="n">04</span>Significant Turning Points</a></li>
+    <li><a href="#conclusion" data-s="conclusion"><span class="n">05</span>Conclusion</a></li>
+    <li><a href="#concepts" data-s="concepts"><span class="n">A</span>Course concepts</a></li>
+    <li><a href="#references" data-s="references"><span class="n">R</span>References</a></li>
+    <li><a href="#about" data-s="about"><span class="n">i</span>About this website</a></li>
+  </ol></nav>
+  <div class="tele">
+    <div class="row bj"><span>BEIJING</span><b class="clockA">--:--:--</b></div>
+    <div class="row ny"><span>NEW YORK</span><b class="clockB">--:--:--</b></div>
+    <div class="row"><span>READ</span><b class="pct" style="color:var(--ink)">0%</b></div>
+    <div class="bar"><i class="prog"></i></div>
+  </div>
+</aside>
+
+<div class="topbar" aria-hidden="true"><span class="sec" id="topSec">Opening</span><span><span style="color:var(--bj)" class="clockA">--:--</span> · <span style="color:var(--ny)" class="clockB">--:--</span></span><div class="bar"><i class="prog"></i></div></div>
+
+<main class="page">
+<div class="wrap">
+
+<header class="hero" id="opening">
+  <div style="min-width:0">
+    <div class="eyebrow"><span>HCI #1</span><i>/</i><span>Being Digital</span><i>/</i><span>Dr. Allison Starks</span></div>
+    <h1 class="title" id="title" aria-label="Two Networks, One User"><span class="w a">Two</span> <span class="w a">Networks,</span> <span class="w">One</span> <span class="w b">User</span></h1>
+    <p class="dek">Growing up between China's internet and the open web, inside a culture of optimization, and what that taught me about who technology is built for.</p>
+    <div class="meta"><span><b>Kaiser Zhang</b></span><span>Data Science, CAS, New York University</span><span>October 6, 2026</span></div>
+  </div>
+  <div class="globe-box" id="globeBox">
+    <canvas id="globe" aria-label="Rotating globe with an arc from Beijing to New York. Drag to rotate." role="img"></canvas>
+    <div class="tag t1"><span>BEIJING · 北京</span><b class="clockA">--:--:--</b></div>
+    <div class="tag t2"><span>NEW YORK</span><b class="clockB">--:--:--</b></div>
+    <div class="hint">DRAG TO ROTATE</div>
+  </div>
+</header>
+
+<div class="stats" aria-label="Key numbers">
+  <div><b>11,000 km</b><span>Beijing to New York</span></div>
+  <div><b>2</b><span>Internets lived on</span></div>
+  <div><b>2</b><span>Turning points</span></div>
+  <div><b>2,716</b><span>Words</span></div>
+  <div><b>7</b><span>References</span></div>
+</div>
+
+<section class="sec" aria-label="Introduction">
+  <div class="prose col"><p id="p-intro-0">I grew up in Haidian, the district of Beijing where China’s technology companies cluster and where parents are famous for raising high-achieving students. I now study data science in New York, about 11,000 kilometers away. The larger distance I travelled, though, was between two internets. In Beijing, my life operated on WeChat, Alipay, and Bilibili, while Google, YouTube, and Instagram were blocked. In New York, those blocked services are the default, and the apps I grew up using are now the ways I connect back home.</p>
+<p id="p-intro-1">Looking back, one idea that connects my family, my city, my field, and the technologies that changed me is optimization. I was raised to treat life as something to improve through effort and measurement, and data science, similarly, measures numbers and optimizes decisions. Growing up between two networks, inside a culture of optimization, has taught me that technology is not neutral. Every platform is built by someone, governed by someone, and optimized for something.</p></div>
+</section>
+
+<!-- 01 IDENTITY -->
+<section class="sec" id="identity">
+  <div class="sec-head"><span class="num">01</span><h2 class="dc">Identity and Technology</h2></div>
+  <div class="prose col"><p id="p-identity-0">There are four identities that shape me and carry me through the world. I am Chinese, and more specifically a Beijinger from Haidian. Haidian is home to Zhongguancun, often called China’s Silicon Valley, and to many highly educated families, known as <span class="cjk" lang="zh-Hans">高知家庭</span> (<em>gāozhī jiātíng</em>), who push their children hard in school and measure success in grades and rankings. At Harrow International School Beijing, I was taught in an English-language British system, so I grew up bilingual, every day shifting between Chinese family life and a British curriculum. I am now an international student in the United States, a newcomer on the network that used to be blocked. Finally, I am a builder. As Head Boy from 2023 to 2025, I coordinated more than 40 student leaders, and I founded the Harrow Art Society venture, which turned student artwork into hoodies and tote bags for a social cause. Today, technology is my main building material.</p>
+<p id="p-identity-1">Growing up in Haidian shaped my relationship with technology in two ways. First, technology was the local industry and the local ambition. The companies behind my everyday apps had offices nearby, and a tech career was presented to me as the “right track” in life. Second, daily life in Beijing ran through super-apps. By the time I was a teenager, WeChat handled my messages, payments, school group chats, and even official notices, and a QR code paid for almost everything, significantly different from the segmented Western app system.</p>
+<p id="p-identity-2">The Class 4 idea of “intelligence in the channel” describes how digital technologies interact “intelligently” with the text, sound, and images they carry, as autocorrect does (Starks, 2026c). WeChat is a channel with intelligence reaching far beyond its name. This one app was my bank, post office, school notice board, and news feed, and it shaped what information reached me. In China, that channel also operates within limits set by the government. The Great Firewall blocks most major Western platforms, so my network had its own apps, rules, and versions of the news.</p>
+<p id="p-identity-3">I experienced this boundary by crossing it. My parents were open-minded about the Western internet, and my father is a big fan of Western culture, so using a VPN to search Google or watch YouTube lectures for school was normal at home. Still, my access to information depended on whether that connection could last. Bandwidth, as Class 4 framed it, is the width of a pipe that limits how much data can flow (Starks, 2026c), and behind the firewall, my pipe to the Western internet was narrow and unreliable <a class="figref" href="#fig1">(see Figure 1)</a>. As a new international student in New York, I found the problem reversed. My phone couldn’t pay for anything until I set up a U.S. phone number, a bank account, and new payment apps, so the network that was the default for everyone here locked me out for a short time. Today I live on both networks at once, with family in WeChat groups and NYU friends on iMessage and Instagram.</p></div>
+
+  <figure class="fig" id="fig1">
+    <div class="fig-h"><span class="no">Figure 1</span><span class="t">The default app stack on each side of the firewall</span><span class="live">Interactive</span></div>
+    <div class="fig-b">
+      <div class="ctrls">
+        <div class="seg" role="group" aria-label="Where I am">
+          <button type="button" id="locBj" aria-pressed="true" style="--c:var(--bj)">I'm in Beijing</button>
+          <button type="button" id="locNy" aria-pressed="false" style="--c:var(--ny)">I'm in New York</button>
+        </div>
+        <label class="sw" id="swWrap"><input type="checkbox" id="swAccess"><span class="k" style="--c:var(--bj)"></span><span class="lab" id="swLab">VPN <b>off</b></span></label>
+      </div>
+      <div class="net" id="net" role="table" aria-label="Apps available in each network"></div>
+      <div class="readout" id="netOut" style="margin-top:12px" aria-live="polite"></div>
+    </div>
+    <figcaption class="fig-n"><i>Note.</i> Switch cities and toggle the access setting. The dashed line is the Great Firewall. From Beijing, a VPN was my narrow, unreliable pipe across. In New York, my phone could not pay for anything until I set up a U.S. phone number and bank account.</figcaption>
+  </figure>
+
+  <div class="prose col"><p id="p-identity-4">Reading both networks in two languages makes me see every feed as carefully curated. One event can have different ways of portraying it for different goals. My identities also make me aware of my access. My school and family gave me good devices, English-language materials, and a way around the firewall, which many students in China do not have. I benefited from those technologies perhaps because I was placed in an environment where I could access them.</p></div>
+</section>
+
+<!-- 02 EDUCATION -->
+<section class="sec" id="education">
+  <div class="sec-head"><span class="num">02</span><h2 class="dc">Education, Profession, and Technology</h2></div>
+  <div class="prose col"><p id="p-education-0">At NYU, I study data science in the College of Arts and Science and plan to minor in computer science. My interest began with reading biographies of Elon Musk, Jensen Huang, and Sam Altman; Max Tegmark’s <em>Life 3.0</em>; and the story of Jim Simons, the mathematician who founded the quantitative hedge fund Renaissance Technologies. I wanted to understand how raw data becomes a large language model that can answer such complex questions. My home pushed in the same direction. My father ran a technology retail business before becoming an investor who trades U.S., Chinese, and Hong Kong stocks and options and invests in private companies. My mother is starting a small quantitative investment firm. My goal is a career in quantitative research, with building AI products as a second interest.</p>
+<p id="p-education-1">I have a considerable amount of exposure to technology training in both NYU courses and outside of them. NYU courses in statistics and experimental physics taught me that every measurement carries error, and courses in Python and linear algebra gave me the tools to work with data. As a research intern, I used a gravity model and multivariate regression to study how commodity prices relate to Peru’s trade flows. In research on Chinese A-share opening auctions, I used Python, SQL, and ClickHouse to build and backtest trading signals. I have also completed IBM coursework on transformers and machine learning; I built Lumi, an app that uses a large language model to turn plain-language tasks into deadlines and priorities.</p>
+<p id="p-education-2">The dominant worldview of data science is that what can be measured can be optimized. The field turns the world into data, picks a number such as accuracy, profit, or clicks, and improves the model until that number rises and is ultimately maximized. This worldview shapes how I see technology as an optimization machine and makes me ask which numbers it is using and how it is optimized. It also makes me optimistic about the future of AI, which shows how far data and optimization can go.</p>
+<p id="p-education-3">My own research showed me the limits of this worldview. One of my backtests produced a strategy that looked profitable on historical data. The backtest ignored two frictions: the time lag between a signal appearing and an order reaching the market, and whether an order would actually be filled at that price. A result like that can look excellent on screen but fail in a live market, because the numbers cannot fully predict how the real world acts <a class="figref" href="#fig2">(see Figure 2)</a>. Class 3 showed that AI has a similar limit. It is excellent at pattern recognition, but it cannot fully understand common-sense reasoning about the physical world (Starks, 2026b). In both cases, a system optimizes what it can measure and misses what it cannot. This is why I am an enthusiast for technology, but a conditional one. Before I fully trust a system, including one I build, I want to know what it optimizes for and whose data built it.</p></div>
+
+  <figure class="fig" id="fig2">
+    <div class="fig-h"><span class="no">Figure 2</span><span class="t">A backtest that ignores frictions describes a market that does not exist</span><span class="live">Interactive</span></div>
+    <div class="fig-b">
+      <div class="ctrls">
+        <label class="sw"><input type="checkbox" id="fLag"><span class="k" style="--c:var(--hot)"></span><span class="lab">Add <b>signal-to-order lag</b></span></label>
+        <label class="sw"><input type="checkbox" id="fFill"><span class="k" style="--c:var(--hot)"></span><span class="lab">Add <b>fill uncertainty</b></span></label>
+      </div>
+      <canvas class="chart" id="bt" role="img" aria-label="Schematic equity curves: the backtest as run, and the same strategy with frictions added."></canvas>
+      <div class="legend"><span style="color:var(--ny)"><i></i>Backtest as I ran it</span><span style="color:var(--hot)" id="lgLive"><i></i>Same strategy with the frictions switched on</span></div>
+      <div class="readout" id="btOut" style="margin-top:12px" aria-live="polite"></div>
+    </div>
+    <figcaption class="fig-n"><i>Note.</i> Schematic illustration of the idea, generated from a fixed random seed. It is not my actual strategy or its results.</figcaption>
+  </figure>
+</section>
+
+<!-- 03 VALUES -->
+<section class="sec" id="values">
+  <div class="sec-head"><span class="num">03</span><h2 class="dc">Values and Technology</h2></div>
+  <div class="prose col"><p id="p-values-0">My inherited values come from my family and from Haidian. My parents often repeated <span class="cjk" lang="zh-Hans">吃得苦中苦，方为人上人</span> (<em>chī dé kǔ zhōng kǔ, fāng wéi rén shàng rén</em>), which means that only by enduring the bitterest hardship can you rise above others. They taught me to work as hard as possible now, choose a “right track” such as technology or quantitative finance, and earn enough to pursue my dreams and live more freely later. They also taught me humility. These values shaped my early use of technology. I got my first phone in middle school, and I had to hand over all my devices at night; my parents also discouraged gaming, although I loved Honor of Kings and the Chinese version of PUBG. At the same time, my father encouraged me to admire tech founders like Elon Musk. After many years, I still admire what those founders built, but I now read their stories as accounts of what one person chose to optimize, not as templates to copy <a class="figref" href="#fig3">(see Figure 3)</a>.</p></div>
+
+  <figure class="fig" id="fig3">
+    <div class="fig-h"><span class="no">Figure 3</span><span class="t">Inherited values, rewritten</span><span class="live">Interactive</span></div>
+    <div class="fig-b">
+      <div class="ctrls">
+        <div class="seg" role="group" aria-label="Which version to show">
+          <button type="button" data-v="then" aria-pressed="false" style="--c:var(--bj)">Inherited</button>
+          <button type="button" data-v="diff" aria-pressed="true">Both</button>
+          <button type="button" data-v="now" aria-pressed="false" style="--c:var(--ny)">Now</button>
+        </div>
+      </div>
+      <div class="vals" id="vals" data-v="diff">
+        <div class="val"><div class="k">Hard work <em>kept, now chosen</em></div>
+          <div class="ln minus"><span>−</span><span>Endure hardship because my parents said so.</span></div>
+          <div class="ln plus"><span>+</span><span>Endure hardship for goals I chose.</span></div>
+          <div class="why">During lockdown, the discipline my parents enforced by collecting my devices became self-imposed.</div></div>
+        <div class="val"><div class="k">The right track <em>changed</em></div>
+          <div class="ln minus"><span>−</span><span>There is one right track: tech or quant.</span></div>
+          <div class="ln plus"><span>+</span><span>Same track, chosen because it fascinates me.</span></div>
+          <div class="why">In the United States, I have seen people succeed in many different areas.</div></div>
+        <div class="val"><div class="k">Dreams <em>changed</em></div>
+          <div class="ln minus"><span>−</span><span>Hide your dreams until you are qualified.</span></div>
+          <div class="ln plus"><span>+</span><span>Start building now. Technology lowered the cost.</span></div>
+          <div class="why">Lumi, built with AI as a tutor, and a six-member Financial Data Science Interest Group in my first semester.</div></div>
+        <div class="val"><div class="k">Humility <em>redirected</em></div>
+          <div class="ln minus"><span>−</span><span>Stay modest and quiet.</span></div>
+          <div class="ln plus"><span>+</span><span>Speak up, and supply the humility AI lacks.</span></div>
+          <div class="why">AI struggles to recognize when it does not know something, so I check its answers.</div></div>
+      </div>
+    </div>
+    <figcaption class="fig-n"><i>Note.</i> Amber lines show where each value started; cyan lines show where it is now.</figcaption>
+  </figure>
+
+  <div class="prose col"><p id="p-values-1">Since lockdown and my move to New York, these values have changed in three ways, and each one shapes how I use technology. First, hard work is now my choice rather than my parents’ rule. During lockdown, the discipline they once enforced by collecting my devices at night became self-imposed (see Turning Point 1). Though I am still on the track my parents pointed to, I no longer believe it is the only legitimate path. In the United States, I have seen that people have different talents and can succeed in so many different areas. I chose quantitative finance and AI because they fascinate me, not because they are ranked the highest as a career.</p>
+<p id="p-values-2">Second, I have stopped waiting to be “qualified.” The model I grew up with says to hide your dreams until you have earned the right to pursue them. Technology lowered the cost of starting. With AI as a tutor, I built Lumi as a student instead of waiting for a degree, and I founded a six-member Financial Data Science Interest Group in my first semester. I treat technology as a way to start building now rather than later, when I become qualified.</p>
+<p id="p-values-3">Third, my humility now meets a different culture. In New York, the most expressive and confident people often win, whether in class discussion, in clubs, or at networking events where students must present themselves. I am learning to speak up in class, including on Zoom, without giving up humility. Humility also guides how I use AI. Class 2 noted that AI is prone to “hallucinations” and struggles to recognize when it does not know something (Starks, 2026a). That is exactly the humility AI lacks, so I supply it by checking its answers. Reeves and Nass’s (1996, as cited in Starks, 2026b) media equation, which holds that people treat computers as social actors and are even polite to them, gives me a second reason for caution. When ChatGPT patiently explains something, it feels like a tutor, and that feeling can make me trust it more than I should.</p></div>
+</section>
+
+<!-- 04 TURNING POINTS -->
+<section class="sec" id="turning">
+  <div class="sec-head"><span class="num">04</span><h2 class="dc">Significant Turning Points</h2></div>
+
+  <figure class="fig" id="fig4">
+    <div class="fig-h"><span class="no">Figure 4</span><span class="t">Two turning points on one timeline</span><span class="live">Drag to scrub</span></div>
+    <div class="fig-b">
+      <div class="tl">
+        <div class="tl-track" id="tlTrack"></div>
+        <div class="tl-axis" id="tlAxis"></div>
+        <label for="tlRange" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Scrub the timeline</label>
+        <input type="range" id="tlRange" min="2019.5" max="2026.9" step="0.05" value="2021.2">
+        <div class="tl-out"><div class="d" id="tlDate">2021</div><div class="net-now" id="tlNet"></div><ul id="tlList"></ul></div>
+      </div>
+    </div>
+    <figcaption class="fig-n"><i>Note.</i> The amber band marks the years when COVID-19 closures repeatedly moved my school online; the cyan band marks life in New York.</figcaption>
+  </figure>
+
+  <h3><span class="k">Turning point 1</span>School Moves Onto a Screen</h3>
+  <div class="prose col"><p id="p-tp1-0">Between early 2020 and late 2022, COVID-19 closures moved my school in Beijing online several times, sometimes for months <a class="figref" href="#fig4">(see Figure 4)</a>. Class happened on Microsoft Teams, and the education was poor. Some students claimed their cameras and microphones were broken, and some stayed logged in long after the lesson had ended, a sign that no one was really there. We could not take proper tests. I paid little attention to the lessons either. Class 3 on working memory explains part of the problem. Working memory holds only about seven chunks of information at a time (Miller, 1956; Starks, 2026b), and switching between tasks has a cost (Hamilton, 2008). At home, the lesson, group chats, and other windows all competed for the narrow amount of information that we can process, so little of the lesson reached long-term memory.</p>
+<p id="p-tp1-1">Yet remote school became the most important turning point of my life. Without a commute, and with no one checking whether I was really listening, I had time and control. I was obese, lazy, and unmotivated, and I used that time to change. I learned bodyweight training, running, HIIT, and healthy eating from videos and posts on Bilibili and Xiaohongshu, and I trained with strict discipline. The discipline I learned from this passed on to other areas. I started studying seriously on my own, even when I ignored the lessons, and I became interested in reading. During lockdown, I stopped playing mobile games and gave that time to exercise, meditation, cooking, and my family.</p>
+<p id="p-tp1-2">This was an optimization, and it worked because I had a target. Like most recommendation feeds, Bilibili and Xiaohongshu are built to keep users watching, which serves the platform first. They helped me because I used them with a goal and searched for what I needed instead of letting the feed guide me.</p>
+<p id="p-tp1-3">Class 2 warned against framing technology as “either/or” instead of “both/and” (Starks, 2026a), and this turning point was both good and bad <a class="figref" href="#fig5">(see Figure 5)</a>. If Teams were taken away, school would simply have paused. I would have had even more free time and no pretend attendance, but I would have lost months of instruction and most contact with classmates. Removing Bilibili and Xiaohongshu reverses the trade-off. I would not have wasted time doomscrolling and could have used that time for sports outdoors and studying, but I would not have had as much guidance on my training, diet, and studying. Without these technologies and the lockdown itself, the change in me might never have happened, and I might still be the obese, lazy, and unmotivated child.</p></div>
+
+  <figure class="fig" id="fig5">
+    <div class="fig-h"><span class="no">Figure 5</span><span class="t">Turning point 1, run without each technology</span><span class="live">Interactive</span></div>
+    <div class="fig-b">
+      <div class="ctrls">
+        <label class="sw"><input type="checkbox" id="tTeams" checked><span class="k"></span><span class="lab"><b>Microsoft Teams</b></span></label>
+        <label class="sw"><input type="checkbox" id="tBili" checked><span class="k"></span><span class="lab"><b>Bilibili &amp; Xiaohongshu</b></span></label>
+      </div>
+      <div class="ledgers" id="tp1L"></div>
+      <div class="readout verdict" id="tp1V" aria-live="polite"></div>
+    </div>
+    <figcaption class="fig-n"><i>Note.</i> Switch a technology off to see what I would have gained and lost without it.</figcaption>
+  </figure>
+
+  <h3><span class="k">Turning point 2</span>A Tutor That Never Sleeps</h3>
+  <div class="prose col"><p id="p-tp2-0">My second turning point was generative AI. I started using ChatGPT soon after it launched in late 2022. Getting an account from China was difficult, and I had to use a VPN to reach it, so the tool itself was a crossing between my two networks. Although I grew up bilingual, my written English grammar still needed work, so I first used ChatGPT to teach and correct my grammar, and then for everything I studied. Linear algebra is a good example. I am a visual learner, so I asked AI to explain the concepts and to render 3D planes that showed how each transformation moves and reshapes them. Seeing the planes change made abstract matrices concrete <a class="figref" href="#fig6">(see Figure 6)</a>. Over time, AI taught me enough to build Lumi, helped me do better academically, and gave me the courage to try things I had once avoided.</p></div>
+
+  <figure class="fig" id="fig6">
+    <div class="fig-h"><span class="no">Figure 6</span><span class="t">The kind of picture I asked AI to render: a matrix reshaping a plane</span><span class="live">Drag · slide</span></div>
+    <div class="fig-b">
+      <div class="la">
+        <canvas id="la" role="img" aria-label="A grid plane in 3D transformed by a 2 by 2 matrix. Drag to orbit."></canvas>
+        <div style="min-width:0">
+          <div class="mat">
+            <span class="br">[</span>
+            <label class="i" for="ma">a <b id="va">1.0</b><input type="range" id="ma" min="-2" max="2" step="0.1" value="1"></label>
+            <label class="j" for="mb">b <b id="vb">0.0</b><input type="range" id="mb" min="-2" max="2" step="0.1" value="0"></label>
+            <span class="br">]</span>
+            <label class="i" for="mc">c <b id="vc">0.0</b><input type="range" id="mc" min="-2" max="2" step="0.1" value="0"></label>
+            <label class="j" for="md">d <b id="vd">1.0</b><input type="range" id="md" min="-2" max="2" step="0.1" value="1"></label>
+          </div>
+          <div class="presets" id="presets">
+            <button type="button" data-m="1,0,0,1">Identity</button>
+            <button type="button" data-m="0.7,-0.7,0.7,0.7">Rotate 45°</button>
+            <button type="button" data-m="1,1,0,1">Shear</button>
+            <button type="button" data-m="1.6,0,0,0.6">Stretch</button>
+            <button type="button" data-m="-1,0,0,1">Reflect</button>
+            <button type="button" data-m="1,2,0.5,1">Collapse</button>
+          </div>
+          <div class="readout" id="laOut" aria-live="polite"></div>
+        </div>
+      </div>
+    </div>
+    <figcaption class="fig-n"><i>Note.</i> Amber is where the first basis vector lands (column a, c); cyan is the second (column b, d). The shaded square's area is the determinant.</figcaption>
+  </figure>
+
+  <div class="prose col"><p id="p-tp2-1">AI also exposed a contradiction. It creates something close to equal opportunity, because anyone with access gets a patient tutor. But access itself is unequal. I could reach ChatGPT because I had a VPN, a reliable connection, and enough English to use it. Language matters in a second way. Class 3 also asked whose memory large language models reflect and what goes into their datasets (Starks, 2026b). For GPT-3, an earlier OpenAI model whose training data was documented, 93% of the data by word count was English (Brown et al., 2020). That helps explain why ChatGPT was such a good English tutor, but it also means the model’s “memory” reflects English speakers far more than Chinese speakers like me.</p>
+<p id="p-tp2-2">One personal risk of using AI is the Google effect. When people expect information to stay available, they remember where to find it better than the information itself (Sparrow et al., 2011). AI goes further, because it produces step-by-step explanations as well as facts, so I could outsource understanding without really noticing. My rule is to let AI explain a method and then rework the problem by hand.</p>
+<p id="p-tp2-3">Without generative AI, I would have longer struggles with hard problems, which build deeper understanding, and less risk of trusting a fluent but wrong answer <a class="figref" href="#fig7">(see Figure 7)</a>. The drawbacks would be slower progress in my written English, no Lumi, and less of the confidence that now pushes me to try new things. I would still keep AI for one reason. I can recreate the benefits of struggle by choice, by closing the chat and working by hand. I cannot recreate a patient tutor at two in the morning.</p></div>
+
+  <figure class="fig" id="fig7">
+    <div class="fig-h"><span class="no">Figure 7</span><span class="t">Turning point 2, run without generative AI</span><span class="live">Interactive</span></div>
+    <div class="fig-b">
+      <div class="ctrls"><label class="sw"><input type="checkbox" id="tAI" checked><span class="k"></span><span class="lab"><b>Generative AI</b></span></label></div>
+      <div class="ledgers" id="tp2L"></div>
+      <div class="readout verdict" id="tp2V" aria-live="polite"></div>
+    </div>
+  </figure>
+</section>
+
+<!-- 05 CONCLUSION -->
+<section class="sec" id="conclusion">
+  <div class="sec-head"><span class="num">05</span><h2 class="dc">Conclusion</h2></div>
+  <p class="pull">Optimization is only as good as the target it serves, and <span class="a">who</span> gets to <span class="b">choose it</span>.</p>
+  <div class="prose col"><p id="p-conclusion-0">Haidian taught me to optimize, and data science gave me the tools to do it. My experiences suggest that optimization is powerful, but only as good as the target it serves. During lockdown, I set a clear goal and used Bilibili and Xiaohongshu to reach it, and it transformed my life. My backtest also pursued a clear goal, yet it ignored how real markets behave, so its result looked far better than reality. AI has accelerated my learning, but I could use it only because I had a VPN, a stable connection, and enough English. As Class 2 cautioned, technology is not an “either/or” but a “both/and” (Starks, 2026a), and my own experience confirms it. I am still on the track my parents pointed to, but I now choose my own targets, and I want to build systems that let others choose theirs.</p></div>
+</section>
+
+<!-- APPENDIX -->
+<section class="sec" id="concepts">
+  <div class="sec-head"><span class="num">A</span><h2 class="dc">Being Digital concepts in this essay</h2></div>
+  <div class="filters seg" role="group" aria-label="Filter by section" id="cFilter" style="display:inline-flex;flex-wrap:wrap">
+    <button type="button" data-f="all" aria-pressed="true">All</button>
+    <button type="button" data-f="identity" aria-pressed="false">Identity</button>
+    <button type="button" data-f="education" aria-pressed="false">Education</button>
+    <button type="button" data-f="values" aria-pressed="false">Values</button>
+    <button type="button" data-f="turning" aria-pressed="false">Turning points</button>
+  </div>
+  <div class="concepts" id="concList"></div>
+</section>
+
+<section class="sec" id="references">
+  <div class="sec-head"><span class="num">R</span><h2 class="dc">References</h2></div>
+  <div class="refs col"><p>Brown, T. B., Mann, B., Ryder, N., Subbiah, M., Kaplan, J., Dhariwal, P., Neelakantan, A., Shyam, P., Sastry, G., Askell, A., Agarwal, S., Herbert-Voss, A., Krueger, G., Henighan, T., Child, R., Ramesh, A., Ziegler, D. M., Wu, J., Winter, C., . . . Amodei, D. (2020). Language models are few-shot learners. <em>Advances in Neural Information Processing Systems, 33</em>, 1877–1901. <a href="https://proceedings.neurips.cc/paper/2020/file/1457c0d6bfcb4967418bfb8ac142f64a-Paper.pdf" target="_blank" rel="noopener">https://proceedings.neurips.cc/paper/2020/file/1457c0d6bfcb4967418bfb8ac142f64a-Paper.pdf</a></p>
+<p>Hamilton, J. (2008, October 2). <em>Think you’re multitasking? Think again</em>. NPR. <a href="https://www.npr.org/2008/10/02/95256794/think-youre-multitasking-think-again" target="_blank" rel="noopener">https://www.npr.org/2008/10/02/95256794/think-youre-multitasking-think-again</a></p>
+<p>Miller, G. A. (1956). The magical number seven, plus or minus two: Some limits on our capacity for processing information. <em>Psychological Review, 63</em>(2), 81–97. <a href="https://doi.org/10.1037/h0043158" target="_blank" rel="noopener">https://doi.org/10.1037/h0043158</a></p>
+<p>Sparrow, B., Liu, J., &amp; Wegner, D. M. (2011). Google effects on memory: Cognitive consequences of having information at our fingertips. <em>Science, 333</em>(6043), 776–778. <a href="https://doi.org/10.1126/science.1207745" target="_blank" rel="noopener">https://doi.org/10.1126/science.1207745</a></p>
+<p>Starks, A. (2026a, September 15). <em>Being Digital: Class 2</em> [PowerPoint slides]. NYU Brightspace. <a href="https://brightspace.nyu.edu" target="_blank" rel="noopener">https://brightspace.nyu.edu</a></p>
+<p>Starks, A. (2026b, September 22). <em>Being Digital: Class 3</em> [PowerPoint slides]. NYU Brightspace. <a href="https://brightspace.nyu.edu" target="_blank" rel="noopener">https://brightspace.nyu.edu</a></p>
+<p>Starks, A. (2026c, September 29). <em>Being Digital: Class 4</em> [PowerPoint slides]. NYU Brightspace. <a href="https://brightspace.nyu.edu" target="_blank" rel="noopener">https://brightspace.nyu.edu</a></p></div>
+</section>
+
+<section class="sec" id="about" aria-label="About this website">
+  <div class="sec-head"><span class="num">i</span><h2 class="dc">About this website</h2></div>
+  <div class="prose col">
+    <p>I built this website in collaboration with Claude, an AI model developed by Anthropic (2026). Together we designed the layout and visual style, wrote the code, and created the interactive figures that illustrate ideas from my essay.</p>
+  </div>
+  <div class="refs col"><p>Anthropic. (2026). <em>Claude</em> (Opus 5.5 and Sonnet 5.5 versions) [Large language model]. <a href="https://claude.ai" target="_blank" rel="noopener">https://claude.ai</a></p></div>
+</section>
+
+<footer><span>Kaiser Zhang · HCI #1 · Being Digital · Fall 2026</span><span>2,716 words · 7 references · 7 figures</span></footer>
+</div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+var reduce=false; try{reduce=matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){}
+var $=function(s,r){return (r||document).querySelector(s)}, $$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))};
+var css=getComputedStyle(document.documentElement);
+var C={bj:css.getPropertyValue('--bj').trim(),ny:css.getPropertyValue('--ny').trim(),hot:css.getPropertyValue('--hot').trim(),
+  ok:css.getPropertyValue('--ok').trim(),ink:css.getPropertyValue('--ink').trim(),muted:css.getPropertyValue('--muted').trim(),
+  dim:css.getPropertyValue('--dim').trim(),line:css.getPropertyValue('--line').trim(),bg:css.getPropertyValue('--bg').trim()};
+
+/* ---------- pointer grid ---------- */
+var root=document.documentElement;
+addEventListener('pointermove',function(e){root.style.setProperty('--mx',e.clientX+'px');root.style.setProperty('--my',e.clientY+'px')},{passive:true});
+
+/* ---------- clocks ---------- */
+var fa=null,fb=null,fa2=null,fb2=null;
+try{
+  fa=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Shanghai',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+  fb=new Intl.DateTimeFormat('en-GB',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+}catch(e){}
+function tick(){ if(!fa) return; var d=new Date(), a=fa.format(d), b=fb.format(d);
+  $$('.clockA').forEach(function(el){el.textContent=el.closest('.topbar')?a.slice(0,5):a});
+  $$('.clockB').forEach(function(el){el.textContent=el.closest('.topbar')?b.slice(0,5):b}); }
+tick(); setInterval(tick,1000);
+
+/* ---------- scroll progress + section spy ---------- */
+var links=$$('#toc a'), secs=links.map(function(a){return document.getElementById(a.dataset.s)}), topSec=$('#topSec');
+function onScroll(){
+  var h=document.documentElement, max=h.scrollHeight-h.clientHeight, p=max>0?h.scrollTop/max:0;
+  $$('.prog').forEach(function(i){i.style.width=(p*100).toFixed(1)+'%'}); $$('.pct').forEach(function(b){b.textContent=Math.round(p*100)+'%'});
+  var cur=0; for(var i=0;i<secs.length;i++){ if(secs[i] && secs[i].getBoundingClientRect().top<innerHeight*0.35) cur=i; }
+  links.forEach(function(a,i){a.classList.toggle('on',i===cur)}); if(topSec) topSec.textContent=links[cur].textContent.replace(/^\S+/,'').trim();
+}
+addEventListener('scroll',onScroll,{passive:true}); addEventListener('resize',onScroll); onScroll();
+
+/* ---------- decipher headings ---------- */
+var GL='▚▞▖▗░▒<>/\\#+=01';
+function decipher(el){
+  if(reduce||el.dataset.done) return; el.dataset.done=1;
+  var fin=el.textContent, n=fin.length, t0=performance.now(), dur=Math.min(900,280+n*22);
+  (function f(t){ var k=Math.min(1,(t-t0)/dur), rev=Math.floor(k*n), s='';
+    for(var i=0;i<n;i++){ var ch=fin[i]; s+= (i<rev||ch===' '||ch===',')?ch:GL[(Math.random()*GL.length)|0]; }
+    el.textContent=s; if(k<1) requestAnimationFrame(f); else el.textContent=fin; })(t0);
+}
+if('IntersectionObserver' in window){
+  var io=new IntersectionObserver(function(es){es.forEach(function(e){ if(e.isIntersecting){decipher(e.target); io.unobserve(e.target);} })},{threshold:.6});
+  $$('h2.dc').forEach(function(h){io.observe(h)});
+}
+
+/* ---------- kinetic title: weight follows the pointer ---------- */
+(function(){
+  var t=$('#title'); if(!t) return;
+  $$('.w',t).forEach(function(w){ var s=w.textContent; w.textContent='';
+    for(var i=0;i<s.length;i++){ var c=document.createElement('span'); c.className='ch'; c.textContent=s[i]; c.setAttribute('aria-hidden','true'); w.appendChild(c);} });
+  var chars=$$('.ch',t); if(reduce) return;
+  var hero=$('.hero');
+  hero.addEventListener('pointermove',function(e){
+    chars.forEach(function(c){ var r=c.getBoundingClientRect(), dx=e.clientX-(r.left+r.width/2), dy=e.clientY-(r.top+r.height/2);
+      var d=Math.sqrt(dx*dx+dy*dy), w=Math.round(800-Math.min(1,d/260)*500);
+      c.style.fontVariationSettings="'wght' "+w; });
+  });
+  hero.addEventListener('pointerleave',function(){chars.forEach(function(c){c.style.fontVariationSettings=''})});
+})();
+
+/* ---------- WebGL globe ---------- */
+(function(){
+  var box=$('#globeBox'), cv=$('#globe'); if(!cv) return;
+  if(typeof THREE==='undefined'){ cv.remove(); box.insertAdjacentHTML('beforeend','<div class="globe-fallback">Beijing → New York · 11,000 km</div>'); return; }
+  var renderer; try{ renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true}); }catch(e){ cv.remove(); box.insertAdjacentHTML('beforeend','<div class="globe-fallback">Beijing → New York · 11,000 km</div>'); return; }
+  renderer.setPixelRatio(Math.min(2,devicePixelRatio||1));
+  var scene=new THREE.Scene(), cam=new THREE.PerspectiveCamera(35,1,.1,100); cam.position.set(0,0,4.2);
+  var G=new THREE.Group(); scene.add(G);
+  function v3(lat,lon,r){ lat*=Math.PI/180; lon*=Math.PI/180; r=r||1; return new THREE.Vector3(r*Math.cos(lat)*Math.cos(lon), r*Math.sin(lat), -r*Math.cos(lat)*Math.sin(lon)); }
+  // dotted sphere
+  var N=2200, pos=new Float32Array(N*3), ga=Math.PI*(3-Math.sqrt(5));
+  for(var i=0;i<N;i++){ var y=1-(i/(N-1))*2, rr=Math.sqrt(1-y*y), th=ga*i; pos[i*3]=Math.cos(th)*rr; pos[i*3+1]=y; pos[i*3+2]=Math.sin(th)*rr; }
+  var pg=new THREE.BufferGeometry(); pg.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  G.add(new THREE.Points(pg,new THREE.PointsMaterial({color:new THREE.Color(C.muted),size:.012,transparent:true,opacity:.55})));
+  // occluder so back dots fade
+  G.add(new THREE.Mesh(new THREE.SphereGeometry(.985,48,48),new THREE.MeshBasicMaterial({color:new THREE.Color(C.bg),transparent:true,opacity:.82})));
+  // rings (latitude lines)
+  [ -60,-30,0,30,60 ].forEach(function(la){ var pts=[]; for(var k=0;k<=96;k++) pts.push(v3(la,k*3.75,1.001));
+    G.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:new THREE.Color(C.line),transparent:true,opacity:.9}))); });
+  // cities + arc
+  var A=v3(39.96,116.30), B=v3(40.73,-74.00), seg=160, ap=[], cols=[], ca=new THREE.Color(C.bj), cb=new THREE.Color(C.ny);
+  var ang=A.angleTo(B);
+  for(var s=0;s<=seg;s++){ var t=s/seg, p=new THREE.Vector3().copy(A).multiplyScalar(Math.sin((1-t)*ang)/Math.sin(ang)).add(new THREE.Vector3().copy(B).multiplyScalar(Math.sin(t*ang)/Math.sin(ang)));
+    p.multiplyScalar(1+.32*Math.sin(Math.PI*t)); ap.push(p); var c=ca.clone().lerp(cb,t); cols.push(c.r,c.g,c.b); }
+  var ag=new THREE.BufferGeometry().setFromPoints(ap); ag.setAttribute('color',new THREE.Float32BufferAttribute(cols,3));
+  G.add(new THREE.Line(ag,new THREE.LineBasicMaterial({vertexColors:true})));
+  function dot(v,col,sz){ var m=new THREE.Mesh(new THREE.SphereGeometry(sz,16,16),new THREE.MeshBasicMaterial({color:col})); m.position.copy(v).multiplyScalar(1.005); G.add(m); return m; }
+  dot(A,ca,.03); dot(B,cb,.03);
+  var ringA=new THREE.Mesh(new THREE.RingGeometry(.05,.06,40),new THREE.MeshBasicMaterial({color:ca,transparent:true,side:THREE.DoubleSide}));
+  ringA.position.copy(A).multiplyScalar(1.006); ringA.lookAt(new THREE.Vector3().copy(A).multiplyScalar(2)); G.add(ringA);
+  var ringB=ringA.clone(); ringB.material=ringA.material.clone(); ringB.material.color=cb; ringB.position.copy(B).multiplyScalar(1.006); ringB.lookAt(new THREE.Vector3().copy(B).multiplyScalar(2)); G.add(ringB);
+  var pulse=dot(ap[0],new THREE.Color(C.ink),.022);
+  // orient so the arc's midpoint faces the camera
+  var mid=ap[seg>>1].clone().normalize(), q=new THREE.Quaternion().setFromUnitVectors(mid,new THREE.Vector3(0,.18,1).normalize());
+  G.quaternion.copy(q); var baseQ=q.clone();
+  var yaw=0,pitch=0,dragging=false,lx=0,ly=0,vel=0;
+  cv.addEventListener('pointerdown',function(e){dragging=true;lx=e.clientX;ly=e.clientY;cv.setPointerCapture(e.pointerId)});
+  cv.addEventListener('pointermove',function(e){ if(!dragging) return; var dx=e.clientX-lx, dy=e.clientY-ly; lx=e.clientX; ly=e.clientY; yaw+=dx*.008; pitch=Math.max(-1,Math.min(1,pitch+dy*.006)); vel=dx*.008; });
+  cv.addEventListener('pointerup',function(){dragging=false}); cv.addEventListener('pointercancel',function(){dragging=false});
+  function size(){ var w=box.clientWidth, h=box.clientHeight||w; renderer.setSize(w,h,false); cam.aspect=w/h; cam.updateProjectionMatrix(); }
+  size(); addEventListener('resize',size);
+  var visible=true; if('IntersectionObserver' in window) new IntersectionObserver(function(es){visible=es[0].isIntersecting}).observe(box);
+  var t0=performance.now();
+  function frame(t){
+    requestAnimationFrame(frame); if(!visible) return;
+    var el=(t-t0)/1000;
+    if(!dragging && !reduce){ yaw+=vel; vel*=.95; yaw+=.0018; }
+    var qy=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),yaw), qx=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),pitch);
+    G.quaternion.copy(qx).multiply(qy).multiply(baseQ);
+    var k=reduce?0.5:((el*.28)%1), idx=Math.floor(k*seg); pulse.position.copy(ap[idx]);
+    var s1=1+((el*.9)%1)*1.6; ringA.scale.set(s1,s1,s1); ringA.material.opacity=reduce?.6:1-((el*.9)%1);
+    var s2=1+(((el*.9)+.5)%1)*1.6; ringB.scale.set(s2,s2,s2); ringB.material.opacity=reduce?.6:1-(((el*.9)+.5)%1);
+    renderer.render(scene,cam);
+  }
+  requestAnimationFrame(frame);
+})();
+
+/* ---------- Fig 1: network switch ---------- */
+(function(){
+  var rows=[
+    {fn:'Messaging', bj:'WeChat <span class="cjk">微信</span>', ny:'iMessage · Instagram'},
+    {fn:'Payments', bj:'WeChat Pay · Alipay <span class="cjk">支付宝</span>', ny:'U.S. bank card · payment apps'},
+    {fn:'Search', bj:'Baidu <span class="cjk">百度</span>', ny:'Google'},
+    {fn:'Video and learning', bj:'Bilibili · Xiaohongshu <span class="cjk">小红书</span>', ny:'YouTube'},
+    {fn:'AI tutor', bj:'—', ny:'ChatGPT'}
+  ];
+  // status table: [bjCell, nyCell] for each row, per mode
+  var S={
+    'bj-0':[['ok','reachable'],['blocked','partly blocked'], ['ok','reachable'],['none','not set up'], ['ok','reachable'],['blocked','blocked'], ['ok','reachable'],['blocked','blocked'], ['none','no local option'],['blocked','unavailable']],
+    'bj-1':[['ok','reachable'],['vpn','via VPN · unstable'], ['ok','reachable'],['none','not set up'], ['ok','reachable'],['vpn','via VPN · unstable'], ['ok','reachable'],['vpn','via VPN · unstable'], ['none','no local option'],['vpn','via VPN · unstable']],
+    'ny-0':[['ok','how I reach home'],['ok','reachable'], ['none','home only'],['locked','locked out'], ['ok','reachable'],['ok','default'], ['ok','reachable'],['ok','default'], ['none','not needed'],['ok','default']],
+    'ny-1':[['ok','how I reach home'],['ok','reachable'], ['none','home only'],['ok','set up'], ['ok','reachable'],['ok','default'], ['ok','reachable'],['ok','default'], ['none','not needed'],['ok','default']]
+  };
+  var loc='bj', acc=false, net=$('#net'), out=$('#netOut'), sw=$('#swAccess'), lab=$('#swLab'), bBj=$('#locBj'), bNy=$('#locNy'), kn=$('#swWrap .k');
+  function render(){
+    var st=S[loc+'-'+(acc?1:0)], h='';
+    h+='<div class="hd fnh" role="columnheader">Function</div>';
+    h+='<div class="hd bj" role="columnheader">Beijing'+(loc==='bj'?' <span class="here">you are here</span>':'')+'</div>';
+    h+='<div class="hd ny" role="columnheader">New York'+(loc==='ny'?' <span class="here">you are here</span>':'')+'</div>';
+    rows.forEach(function(r,i){
+      if(i===0) h+='<div class="wall" aria-hidden="true"></div>';
+      var a=st[i*2], b=st[i*2+1];
+      h+='<div class="fn" role="rowheader">'+r.fn+'</div>';
+      h+='<div class="cell bj-c" role="cell" data-s="'+a[0]+'"><span class="app">'+r.bj+'</span><span class="st">'+a[1]+'</span></div>';
+      h+='<div class="cell ny-c" role="cell" data-s="'+b[0]+'"><span class="app">'+r.ny+'</span><span class="st">'+b[1]+'</span></div>';
+    });
+    net.innerHTML=h;
+    var blocked=st.filter(function(x,i){return i%2===1 && (x[0]==='blocked')}).length;
+    if(loc==='bj') out.innerHTML= acc ? '<span class="hl-bj">Beijing, VPN on.</span> New York services come through, but only as long as the connection holds. Bandwidth is narrow.'
+                                     : '<span class="hl-bj">Beijing, no VPN.</span> <span class="hl-hot">'+blocked+' of 5</span> New York services are blocked by the firewall.';
+    else out.innerHTML= acc ? '<span class="hl-ny">New York, set up.</span> Both networks at once: family on WeChat, NYU friends on iMessage and Instagram.'
+                            : '<span class="hl-ny">New York, just arrived.</span> <span class="hl-hot">Payments locked</span> until I set up a U.S. phone number, a bank account, and new payment apps.';
+    lab.innerHTML= loc==='bj' ? 'VPN <b>'+(acc?'on':'off')+'</b>' : 'U.S. phone + bank <b>'+(acc?'set up':'not yet')+'</b>';
+    kn.style.setProperty('--c', loc==='bj'?'var(--bj)':'var(--ny)');
+    bBj.setAttribute('aria-pressed',loc==='bj'); bNy.setAttribute('aria-pressed',loc==='ny');
+  }
+  bBj.onclick=function(){loc='bj';acc=false;sw.checked=false;render()};
+  bNy.onclick=function(){loc='ny';acc=false;sw.checked=false;render()};
+  sw.onchange=function(){acc=sw.checked;render()};
+  render();
+})();
+
+/* ---------- shared canvas helper ---------- */
+function fitCanvas(cv){ var r=cv.getBoundingClientRect(), d=Math.min(2,devicePixelRatio||1); cv.width=Math.max(1,Math.round(r.width*d)); cv.height=Math.max(1,Math.round(r.height*d)); var x=cv.getContext('2d'); x.setTransform(d,0,0,d,0,0); return {x:x,w:r.width,h:r.height}; }
+
+/* ---------- Fig 2: backtest with frictions (schematic) ---------- */
+(function(){
+  var cv=$('#bt'), lag=$('#fLag'), fill=$('#fFill'), out=$('#btOut'); if(!cv) return;
+  var seed=7; function rnd(){ seed=(seed*16807)%2147483647; return (seed-1)/2147483646; }
+  var T=240, noise=[]; for(var i=0;i<T;i++){ var u=rnd(),v=rnd(); noise.push(Math.sqrt(-2*Math.log(u+1e-9))*Math.cos(2*Math.PI*v)); }
+  function series(l,f){ var e=[1], drift=.0042; if(l) drift-=.0030; if(f) drift-=.0026; var vol=.011*(f?1.15:1);
+    for(var i=1;i<T;i++) e.push(e[i-1]*(1+drift+vol*noise[i])); return e; }
+  var base=series(false,false), cur=base.slice(), target=base.slice();
+  function draw(){
+    var g=fitCanvas(cv), x=g.x, W=g.w, H=g.h, pl=14, pr=14, pt=18, pb=26;
+    x.clearRect(0,0,W,H);
+    var all=base.concat(target,cur), mn=Math.min.apply(null,all), mx=Math.max.apply(null,all); mn=Math.min(mn,.9); mx=Math.max(mx,1.1);
+    function X(i){return pl+(W-pl-pr)*i/(T-1)} function Y(v){return pt+(H-pt-pb)*(1-(v-mn)/(mx-mn))}
+    x.strokeStyle=C.line; x.lineWidth=1; x.setLineDash([3,4]); x.beginPath(); x.moveTo(pl,Y(1)); x.lineTo(W-pr,Y(1)); x.stroke(); x.setLineDash([]);
+    x.fillStyle=C.dim; x.font='11px "JetBrains Mono", monospace'; x.fillText('start',pl+2,Y(1)-6); x.fillText('time →',W-pr-48,H-8); x.fillText('equity (schematic)',pl,12);
+    function line(arr,col,w){ x.strokeStyle=col; x.lineWidth=w; x.beginPath(); arr.forEach(function(v,i){ i?x.lineTo(X(i),Y(v)):x.moveTo(X(i),Y(v)) }); x.stroke(); }
+    line(base,C.ny,2);
+    if(lag.checked||fill.checked){ line(cur,C.hot,2); var e=cur[T-1]; x.fillStyle=C.hot; x.beginPath(); x.arc(X(T-1),Y(e),3.5,0,7); x.fill(); }
+    x.fillStyle=C.ny; x.beginPath(); x.arc(X(T-1),Y(base[T-1]),3.5,0,7); x.fill();
+  }
+  function update(){
+    target=series(lag.checked,fill.checked);
+    var n=(lag.checked?1:0)+(fill.checked?1:0);
+    out.innerHTML = n===0 ? '<span class="hl-ny">Frictions off.</span> The curve looks excellent on screen. Switch on a friction to see what it ignored.'
+      : n===1 ? '<span class="hl-hot">One friction on.</span> Most of the edge disappears once '+(lag.checked?'orders arrive after the signal':'orders may not fill at the backtest price')+'.'
+      : '<span class="hl-hot">Both frictions on.</span> The number described a market that does not exist.';
+    $('#lgLive').style.opacity=n?1:.35;
+    if(reduce){ cur=target.slice(); draw(); return; }
+    var from=cur.slice(), t0=performance.now();
+    (function step(t){ var k=Math.min(1,(t-t0)/600); k=1-Math.pow(1-k,3); cur=from.map(function(v,i){return v+(target[i]-v)*k}); draw(); if(k<1) requestAnimationFrame(step); })(t0);
+  }
+  lag.onchange=update; fill.onchange=update; addEventListener('resize',draw); update();
+})();
+
+/* ---------- Fig 3: values view ---------- */
+(function(){
+  var box=$('#vals'), bs=$$('#fig3 .seg button');
+  bs.forEach(function(b){ b.onclick=function(){ box.dataset.v=b.dataset.v; bs.forEach(function(o){o.setAttribute('aria-pressed',o===b)}); }; });
+})();
+
+/* ---------- Fig 4: timeline scrubber ---------- */
+(function(){
+  var lo=2019.5, hi=2026.9, track=$('#tlTrack'), axis=$('#tlAxis'), rg=$('#tlRange');
+  function P(y){return ((y-lo)/(hi-lo)*100)+'%'}
+  var bands=[{a:2020.05,b:2022.95,c:'',t:'Online school, on and off'},{a:2025.6,b:2026.9,c:'ny',t:'New York'}];
+  var evs=[
+    {y:2020.1,c:'bj',t:'COVID-19 closures move my school onto Microsoft Teams'},
+    {y:2020.4,c:'bj',t:'I start training with videos from Bilibili and Xiaohongshu'},
+    {y:2022.9,c:'',t:'ChatGPT launches; I reach it through a VPN'},
+    {y:2023.6,c:'bj',t:'Head Boy at Harrow Beijing (2023–2025)'},
+    {y:2025.65,c:'ny',t:'I move to New York and start at NYU'},
+    {y:2026.76,c:'ny',t:'This essay'}
+  ];
+  var periods=[
+    {a:2020.4,b:2022.95,t:'Fitness transformation; I stop playing mobile games'},
+    {a:2022.9,b:2026.9,t:'Learning with AI: grammar first, then everything (Lumi, linear algebra)'},
+    {a:2023.6,b:2025.5,t:'Coordinating more than 40 student leaders as Head Boy'}
+  ];
+  bands.forEach(function(b){ track.insertAdjacentHTML('beforeend','<div class="tl-band '+b.c+'" style="left:'+P(b.a)+';width:calc('+P(b.b)+' - '+P(b.a)+')"><span>'+b.t+'</span></div>') });
+  evs.forEach(function(e){ track.insertAdjacentHTML('beforeend','<div class="tl-ev '+e.c+'" style="left:'+P(e.y)+'" title="'+e.t+'"></div>') });
+  track.insertAdjacentHTML('beforeend','<div class="tl-head" id="tlHead"></div>');
+  for(var y=2020;y<=2026;y++) axis.insertAdjacentHTML('beforeend','<span>'+y+'</span>');
+  axis.style.paddingLeft=P(2020); axis.style.paddingRight='calc(100% - '+P(2026)+' - 2.2em)';
+  var head=$('#tlHead');
+  function q(y){ var yr=Math.floor(y), m=Math.floor((y-yr)*12); return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m]+' '+yr; }
+  function upd(){
+    var y=parseFloat(rg.value); head.style.left=P(y); $('#tlDate').textContent=q(y);
+    var inNY=y>=2025.65; $('#tlNet').innerHTML=inNY?'<span style="color:var(--ny)">Network: New York</span>':'<span style="color:var(--bj)">Network: Beijing</span>';
+    var items=[];
+    evs.forEach(function(e){ if(Math.abs(e.y-y)<.22) items.push('<li><b>'+e.t+'</b></li>') });
+    periods.forEach(function(p){ if(y>=p.a&&y<=p.b) items.push('<li>'+p.t+'</li>') });
+    if(y>=2020.05&&y<=2022.95) items.unshift('<li>School is online, sometimes for months</li>');
+    $('#tlList').innerHTML=items.join('')||'<li style="color:var(--muted)">Before the turning points</li>';
+  }
+  rg.oninput=upd; upd();
+})();
+
+/* ---------- Fig 5 & 7: counterfactual ledgers ---------- */
+function ledger(name,g,l){ return '<div class="ledger"><div class="lh">remove(<b>'+name+'</b>)</div><div class="c gain"><div class="lab">I would gain</div><ul>'+g.map(function(x){return '<li>'+x+'</li>'}).join('')+'</ul></div><div class="c loss"><div class="lab">I would lose</div><ul>'+l.map(function(x){return '<li>'+x+'</li>'}).join('')+'</ul></div></div>'; }
+(function(){
+  var a=$('#tTeams'), b=$('#tBili'), L=$('#tp1L'), V=$('#tp1V');
+  function r(){
+    var h='';
+    if(!a.checked) h+=ledger('"Microsoft Teams"',['Even more free time','No pretend attendance'],['Months of instruction','Most contact with classmates']);
+    if(!b.checked) h+=ledger('"Bilibili", "Xiaohongshu"',['No time wasted doomscrolling','More time for sports outdoors and studying'],['Guidance on training, diet, and studying','Probably the whole transformation']);
+    L.innerHTML=h||'<div class="empty">Both technologies on: this is what actually happened. Switch one off.</div>';
+    V.innerHTML = (a.checked&&b.checked) ? '<span class="hl-ok">As it happened.</span> Teams kept school running; Bilibili and Xiaohongshu changed me.'
+      : !b.checked ? '<span class="hl-hot">Without these platforms</span>, the change in me might never have happened.'
+      : '<span class="hl-bj">Without Teams</span>, school simply pauses, but I still have the guidance to change.';
+  }
+  a.onchange=r; b.onchange=r; r();
+})();
+(function(){
+  var a=$('#tAI'), L=$('#tp2L'), V=$('#tp2V');
+  function r(){
+    L.innerHTML = a.checked ? '<div class="empty">Generative AI on: this is what actually happened. Switch it off.</div>'
+      : ledger('"generative AI"',['Longer struggles with hard problems, which build deeper understanding','Less risk of trusting a fluent but wrong answer'],['Slower progress in my written English','No Lumi','Less of the confidence to try new things']);
+    V.innerHTML='<span class="hl-ok">Verdict: keep it.</span> I can recreate the benefits of struggle by closing the chat and working by hand. I cannot recreate a patient tutor at two in the morning.';
+  }
+  a.onchange=r; r();
+})();
+
+/* ---------- Fig 6: matrix transforming a plane in 3D ---------- */
+(function(){
+  var cv=$('#la'); if(!cv) return;
+  var ids=['ma','mb','mc','md'], ins=ids.map(function(i){return $('#'+i)}), M=[1,0,0,1], tgt=[1,0,0,1];
+  var yaw=-0.6, pitch=0.62, drag=false, lx=0, ly=0, auto=!reduce;
+  function proj(p,W,H){ // p=[x,y,z]
+    var cy=Math.cos(yaw), sy=Math.sin(yaw), cp=Math.cos(pitch), sp=Math.sin(pitch);
+    var x=p[0]*cy-p[1]*sy, y=p[0]*sy+p[1]*cy, z=p[2];
+    var y2=y*cp-z*sp, z2=y*sp+z*cp;
+    var dcam=8, s=Math.min(W,H)*1.25/(dcam-y2);
+    return [W/2+x*s*1.0, H*0.56 - z2*s*1.0 + 0];
+  }
+  function T(u,v){ return [M[0]*u+M[1]*v, M[2]*u+M[3]*v, 0]; }
+  function draw(){
+    var g=fitCanvas(cv), x=g.x, W=g.w, H=g.h; x.clearRect(0,0,W,H);
+    function seg(a,b,col,w,al){ var p=proj(a,W,H), q=proj(b,W,H); x.globalAlpha=al==null?1:al; x.strokeStyle=col; x.lineWidth=w; x.beginPath(); x.moveTo(p[0],p[1]); x.lineTo(q[0],q[1]); x.stroke(); x.globalAlpha=1; }
+    var R=3;
+    for(var k=-R;k<=R;k++){ seg([k,-R,0],[k,R,0],C.line,1); seg([-R,k,0],[R,k,0],C.line,1); }
+    // vertical axis for depth cue
+    seg([0,0,0],[0,0,1.6],C.dim,1,.6);
+    for(var k2=-R;k2<=R;k2++){ seg(T(k2,-R),T(k2,R),C.muted,1,.55); seg(T(-R,k2),T(R,k2),C.muted,1,.55); }
+    // unit square image
+    var sq=[T(0,0),T(1,0),T(1,1),T(0,1)].map(function(p){return proj(p,W,H)}), det=M[0]*M[3]-M[1]*M[2];
+    x.fillStyle=det>=0?'rgba(98,227,166,.18)':'rgba(255,93,110,.2)'; x.beginPath(); sq.forEach(function(p,i){i?x.lineTo(p[0],p[1]):x.moveTo(p[0],p[1])}); x.closePath(); x.fill();
+    function arrow(to,col){ var o=proj([0,0,0],W,H), p=proj(to,W,H); x.strokeStyle=col; x.fillStyle=col; x.lineWidth=3; x.beginPath(); x.moveTo(o[0],o[1]); x.lineTo(p[0],p[1]); x.stroke();
+      var a=Math.atan2(p[1]-o[1],p[0]-o[0]); x.beginPath(); x.moveTo(p[0],p[1]); x.lineTo(p[0]-10*Math.cos(a-.4),p[1]-10*Math.sin(a-.4)); x.lineTo(p[0]-10*Math.cos(a+.4),p[1]-10*Math.sin(a+.4)); x.closePath(); x.fill(); }
+    arrow(T(1,0),C.bj); arrow(T(0,1),C.ny);
+    x.fillStyle=C.dim; x.font='11px "JetBrains Mono", monospace'; x.fillText('drag to orbit',10,H-10);
+  }
+  function out(){ var det=M[0]*M[3]-M[1]*M[2];
+    $('#laOut').innerHTML='det = <b>'+det.toFixed(2)+'</b> · '+(Math.abs(det)<.05?'<span class="hl-hot">the plane collapses onto a line</span>':det<0?'<span class="hl-hot">orientation flips</span>; area × '+Math.abs(det).toFixed(2):'area × '+det.toFixed(2)); }
+  function sync(){ ['va','vb','vc','vd'].forEach(function(id,i){ $('#'+id).textContent=(+tgt[i]).toFixed(1); }); }
+  ins.forEach(function(inp,i){ inp.oninput=function(){ tgt[i]=parseFloat(inp.value); M=tgt.slice(); sync(); out(); draw(); }; });
+  $$('#presets button').forEach(function(b){ b.onclick=function(){
+    tgt=b.dataset.m.split(',').map(Number); ins.forEach(function(inp,i){inp.value=tgt[i]}); sync();
+    if(reduce){ M=tgt.slice(); out(); draw(); return; }
+    var from=M.slice(), t0=performance.now();
+    (function st(t){ var k=Math.min(1,(t-t0)/700); k=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2; M=from.map(function(v,i){return v+(tgt[i]-v)*k}); draw(); out(); if(k<1) requestAnimationFrame(st); })(t0);
+  }; });
+  cv.addEventListener('pointerdown',function(e){drag=true;auto=false;lx=e.clientX;ly=e.clientY;cv.setPointerCapture(e.pointerId)});
+  cv.addEventListener('pointermove',function(e){ if(!drag) return; yaw+=(e.clientX-lx)*.01; pitch=Math.max(.15,Math.min(1.45,pitch+(e.clientY-ly)*.008)); lx=e.clientX; ly=e.clientY; draw(); });
+  cv.addEventListener('pointerup',function(){drag=false}); cv.addEventListener('pointercancel',function(){drag=false});
+  var vis=false; if('IntersectionObserver' in window) new IntersectionObserver(function(es){vis=es[0].isIntersecting}).observe(cv);
+  (function spin(){ requestAnimationFrame(spin); if(auto&&vis){ yaw+=.003; draw(); } })();
+  addEventListener('resize',draw); sync(); out(); draw();
+})();
+
+/* ---------- Concept index ---------- */
+(function(){
+  var data=[
+    ['Intelligence in the channel','WeChat as a channel that shapes what information reaches me','Starks, 2026c','identity','p-identity-2'],
+    ['Bandwidth','The narrow, unreliable pipe through the firewall','Starks, 2026c','identity','p-identity-3'],
+    ['What AI can and cannot do','Pattern recognition without common-sense reasoning, like my backtest','Starks, 2026b','education','p-education-3'],
+    ['Hallucinations','Why I check AI answers','Starks, 2026a','values','p-values-3'],
+    ['The media equation','ChatGPT feels like a tutor, so I trust it too easily','Reeves & Nass, 1996, as cited in Starks, 2026b','values','p-values-3'],
+    ['Working memory (7 ± 2)','Why online lessons did not stick','Miller, 1956; Starks, 2026b','turning','p-tp1-0'],
+    ['Cost of task switching','Lessons competing with chats and windows','Hamilton, 2008','turning','p-tp1-0'],
+    ['Either/or vs. both/and','Remote school as both good and bad','Starks, 2026a','turning','p-tp1-3'],
+    ['LLMs and memory: whose memory?','An English-heavy model as my English tutor','Starks, 2026b; Brown et al., 2020','turning','p-tp2-1'],
+    ['The Google effect','Outsourcing understanding to AI','Sparrow et al., 2011','turning','p-tp2-2']
+  ];
+  var list=$('#concList'), bs=$$('#cFilter button');
+  function r(f){ list.innerHTML=data.filter(function(d){return f==='all'||d[3]===f}).map(function(d){
+    return '<div class="concept"><span class="nm">'+d[0]+'</span><span class="wh">'+d[1]+'</span><span class="src">'+d[2].replace('&','&amp;')+'</span><a href="#'+d[4]+'">Go to passage</a></div>'; }).join(''); }
+  bs.forEach(function(b){ b.onclick=function(){ bs.forEach(function(o){o.setAttribute('aria-pressed',o===b)}); r(b.dataset.f); }; });
+  r('all');
+})();
+})();
+</script>
+
+</body>
+</html>
